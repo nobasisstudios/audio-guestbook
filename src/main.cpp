@@ -14,6 +14,9 @@
  * 
  **/
 
+float volume = 0.8;
+int gain = 25;
+
 // INCLUDES
 // The default "sketchbook" location in which Arduino IDE installs libraries is:
 // C:\Users\alast\Documents\Arduino
@@ -220,7 +223,7 @@ void setup() {
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-  sgtl5000_1.volume(0.5);
+  sgtl5000_1.volume(volume);
 
   // Play a beep to indicate system is online
   waveform1.begin(WAVEFORM_SINE);
@@ -242,7 +245,7 @@ void setup() {
   }
 
   // Value in dB
-  sgtl5000_1.micGain(15);
+  sgtl5000_1.micGain(gain);
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
