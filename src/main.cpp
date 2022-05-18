@@ -1,3 +1,4 @@
+#include <Arduino.h>
 /**
  * Audio Guestbook, Copyright (c) 2022 Playful Technology
  * 
