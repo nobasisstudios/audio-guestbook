@@ -15,7 +15,7 @@
  **/
 
 float volume = 0.8;
-int gain = 25;
+int gain = 20;
 
 // INCLUDES
 // The default "sketchbook" location in which Arduino IDE installs libraries is:
@@ -160,7 +160,7 @@ void playAllRecordings() {
       Serial.print("Now playing ");
       Serial.println(entry.name());
       // Play a short beep before each message
-      waveform1.amplitude(0.5);
+      waveform1.amplitude(0.2);
       wait(250);
       waveform1.amplitude(0);
       // Play the file
