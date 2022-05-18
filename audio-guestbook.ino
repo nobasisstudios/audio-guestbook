@@ -144,14 +144,14 @@ void loop() {
       // Wait a second for users to put the handset to their ear
       wait(1000);
       // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
+      playRaw1.play("greeting.raw");    
       // Wait until the  message has finished playing
-      while (playWav1.isPlaying()) {
+      while (playRaw1.isPlaying()) {
         // Check whether the handset is replaced
         buttonRecord.update();
         // Handset is replaced
         if(buttonRecord.fallingEdge()) {
-          playWav1.stop();
+          playRaw1.stop();
           mode = Mode::Ready;
           return;
         }
