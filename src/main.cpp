@@ -69,6 +69,137 @@ Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 8);
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 
+
+// Non-blocking delay, which pauses execution of main program logic,
+// but while still listening for input 
+void wait(unsigned int milliseconds) {
+  elapsedMillis msec=0;
+
+  while (msec <= milliseconds) {
+    buttonRecord.update();
+    buttonPlay.update();
+    if (buttonRecord.fallingEdge()) Serial.println("Button (pin 0) Press");
+    if (buttonPlay.fallingEdge()) Serial.println("Button (pin 1) Press");
+    if (buttonRecord.risingEdge()) Serial.println("Button (pin 0) Release");
+    if (buttonPlay.risingEdge()) Serial.println("Button (pin 1) Release");
+  }
+}
+
+
+void startRecording() {
+  // Find the first available file number
+  for (uint8_t i=0; i<9999; i++) {
+    // Format the counter as a five-digit number with leading zeroes, followed by file extension
+    snprintf(filename, 11, " %05d.RAW", i);
+    // Create if does not exist, do not open existing, write, sync after write
+    if (!SD.exists(filename)) {
+      break;
+    }
+  }
+  frec = SD.open(filename, FILE_WRITE);
+  if(frec) {
+    Serial.print("Recording to ");
+    Serial.println(filename);
+    queue1.begin();
+    mode = Mode::Recording;
+  }
+  else {
+    Serial.println("Couldn't open file to record!");
+  }
+}
+
+void continueRecording() {
+  // Check if there is data in the queue
+  if (queue1.available() >= 2) {
+    byte buffer[512];
+    // Fetch 2 blocks from the audio library and copy
+    // into a 512 byte buffer.  The Arduino SD library
+    // is most efficient when full 512 byte sector size
+    // writes are used.
+    memcpy(buffer, queue1.readBuffer(), 256);
+    queue1.freeBuffer();
+    memcpy(buffer+256, queue1.readBuffer(), 256);
+    queue1.freeBuffer();
+    // Write all 512 bytes to the SD card
+    frec.write(buffer, 512);
+  }
+}
+
+void stopRecording() {
+  // Stop adding any new data to the queue
+  queue1.end();
+  // Flush all existing remaining data from the queue
+  while (queue1.available() > 0) {
+    // Save to open file
+    frec.write((byte*)queue1.readBuffer(), 256);
+    queue1.freeBuffer();
+  }
+  // Close the file
+  frec.close();
+  mode = Mode::Ready;
+}
+
+
+void playAllRecordings() {
+  // Recording files are saved in the root directory
+  File dir = SD.open("/");
+  
+  while (true) {
+    File entry =  dir.openNextFile();
+    if (!entry) {
+      // no more files
+      entry.close();
+      break;
+    }
+
+    int8_t len = strlen(entry.name());
+    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
+      Serial.print("Now playing ");
+      Serial.println(entry.name());
+      // Play a short beep before each message
+      waveform1.amplitude(0.5);
+      wait(250);
+      waveform1.amplitude(0);
+      // Play the file
+      playRaw1.play(entry.name());
+      mode = Mode::Playing;
+    }
+    entry.close();
+
+    while (playRaw1.isPlaying()) {
+      buttonPlay.update();
+      buttonRecord.update();
+      // Button is pressed again
+      if(buttonPlay.risingEdge() || buttonRecord.fallingEdge()) {
+        playRaw1.stop();
+        mode = Mode::Ready;
+        return;
+      }   
+    }
+  }
+  // All files have been played
+  mode = Mode::Ready;
+}
+
+// Retrieve the current time from Teensy built-in RTC
+time_t getTeensy3Time(){
+  return Teensy3Clock.get();
+}
+
+// Callback to assign timestamps for file system operations
+void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
+
+  // Return date using FS_DATE macro to format fields.
+  *date = FS_DATE(year(), month(), day());
+
+  // Return time using FS_TIME macro to format fields.
+  *time = FS_TIME(hour(), minute(), second());
+
+  // Return low time bits in units of 10 ms.
+  *ms10 = second() & 1 ? 100 : 0;
+}
+
+
 void setup() {
 
   // Note that Serial.begin() is not required for Teensy - 
@@ -193,132 +324,4 @@ void loop() {
     case Mode::Playing:
       break;  
   }   
-}
-
-void startRecording() {
-  // Find the first available file number
-  for (uint8_t i=0; i<9999; i++) {
-    // Format the counter as a five-digit number with leading zeroes, followed by file extension
-    snprintf(filename, 11, " %05d.RAW", i);
-    // Create if does not exist, do not open existing, write, sync after write
-    if (!SD.exists(filename)) {
-      break;
-    }
-  }
-  frec = SD.open(filename, FILE_WRITE);
-  if(frec) {
-    Serial.print("Recording to ");
-    Serial.println(filename);
-    queue1.begin();
-    mode = Mode::Recording;
-  }
-  else {
-    Serial.println("Couldn't open file to record!");
-  }
-}
-
-void continueRecording() {
-  // Check if there is data in the queue
-  if (queue1.available() >= 2) {
-    byte buffer[512];
-    // Fetch 2 blocks from the audio library and copy
-    // into a 512 byte buffer.  The Arduino SD library
-    // is most efficient when full 512 byte sector size
-    // writes are used.
-    memcpy(buffer, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
-    memcpy(buffer+256, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
-    // Write all 512 bytes to the SD card
-    frec.write(buffer, 512);
-  }
-}
-
-void stopRecording() {
-  // Stop adding any new data to the queue
-  queue1.end();
-  // Flush all existing remaining data from the queue
-  while (queue1.available() > 0) {
-    // Save to open file
-    frec.write((byte*)queue1.readBuffer(), 256);
-    queue1.freeBuffer();
-  }
-  // Close the file
-  frec.close();
-  mode = Mode::Ready;
-}
-
-
-void playAllRecordings() {
-  // Recording files are saved in the root directory
-  File dir = SD.open("/");
-  
-  while (true) {
-    File entry =  dir.openNextFile();
-    if (!entry) {
-      // no more files
-      entry.close();
-      break;
-    }
-
-    int8_t len = strlen(entry.name());
-    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
-      Serial.print("Now playing ");
-      Serial.println(entry.name());
-      // Play a short beep before each message
-      waveform1.amplitude(0.5);
-      wait(250);
-      waveform1.amplitude(0);
-      // Play the file
-      playRaw1.play(entry.name());
-      mode = Mode::Playing;
-    }
-    entry.close();
-
-    while (playRaw1.isPlaying()) {
-      buttonPlay.update();
-      buttonRecord.update();
-      // Button is pressed again
-      if(buttonPlay.risingEdge() || buttonRecord.fallingEdge()) {
-        playRaw1.stop();
-        mode = Mode::Ready;
-        return;
-      }   
-    }
-  }
-  // All files have been played
-  mode = Mode::Ready;
-}
-
-// Retrieve the current time from Teensy built-in RTC
-time_t getTeensy3Time(){
-  return Teensy3Clock.get();
-}
-
-// Callback to assign timestamps for file system operations
-void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
-
-  // Return date using FS_DATE macro to format fields.
-  *date = FS_DATE(year(), month(), day());
-
-  // Return time using FS_TIME macro to format fields.
-  *time = FS_TIME(hour(), minute(), second());
-
-  // Return low time bits in units of 10 ms.
-  *ms10 = second() & 1 ? 100 : 0;
-}
-
-// Non-blocking delay, which pauses execution of main program logic,
-// but while still listening for input 
-void wait(unsigned int milliseconds) {
-  elapsedMillis msec=0;
-
-  while (msec <= milliseconds) {
-    buttonRecord.update();
-    buttonPlay.update();
-    if (buttonRecord.fallingEdge()) Serial.println("Button (pin 0) Press");
-    if (buttonPlay.fallingEdge()) Serial.println("Button (pin 1) Press");
-    if (buttonRecord.risingEdge()) Serial.println("Button (pin 0) Release");
-    if (buttonPlay.risingEdge()) Serial.println("Button (pin 1) Release");
-  }
 }
