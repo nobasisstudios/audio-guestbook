@@ -55,6 +55,9 @@ AudioConnection patchCord4(mixer, 0, i2s1, 0); // mixer output to speaker (L)
 AudioConnection patchCord5(i2s2, 0, queue1, 0); // mic input to queue (L)
 AudioControlSGTL5000     sgtl5000_1;
 
+unsigned long previousMillis;
+int holdTime = 1000;
+
 // Filename to save audio recording on SD card
 char filename[15];
 // The file object itself
@@ -136,7 +139,13 @@ void loop() {
         mode = Mode::Prompting;
       }
       else if(buttonPlay.fallingEdge()) {
-        playAllRecordings();
+        previousMillis = millis();
+      }
+      else if(buttonPlay.risingEdge()) {
+        if((millis() - previousMillis) > holdTime) {
+          playAllRecordings();
+        }
+        else {playLastRecording();}
       }
       break;
 
@@ -248,8 +257,16 @@ void stopRecording() {
 }
 
 
+void playLastRecording() {
+  Serial.print("Now playing last recording ");
+  Serial.println(filename);
+  playRaw1.play(filename);
+}
+
+
 void playAllRecordings() {
   // Recording files are saved in the root directory
+  Serial.println("Playing all Recordings");
   File dir = SD.open("/");
   
   while (true) {
