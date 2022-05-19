@@ -16,6 +16,8 @@
 
 float volume = 0.8;
 int gain = 20;
+unsigned long previousMillis;
+int holdTime = 1000;
 
 // INCLUDES
 // The default "sketchbook" location in which Arduino IDE installs libraries is:
@@ -140,6 +142,11 @@ void stopRecording() {
   // Close the file
   frec.close();
   mode = Mode::Ready;
+}
+
+
+void playLastRecording() {
+  Serial.println("playLastRecording");
 }
 
 
@@ -271,7 +278,13 @@ void loop() {
         mode = Mode::Prompting;
       }
       else if(buttonPlay.fallingEdge()) {
-        playAllRecordings();
+        previousMillis = millis();
+      }
+      else if(buttonPlay.risingEdge()) {
+        if((millis() - previousMillis) > holdTime) {
+          playAllRecordings();
+        }
+        else {playLastRecording();}
       }
       break;
 
