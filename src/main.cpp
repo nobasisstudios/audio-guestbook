@@ -146,12 +146,15 @@ void stopRecording() {
 
 
 void playLastRecording() {
-  Serial.println("playLastRecording");
+  Serial.print("Now playing last recording ");
+  Serial.println(filename);
+  playRaw1.play(filename);
 }
 
 
 void playAllRecordings() {
   // Recording files are saved in the root directory
+  Serial.println("Playing all Recordings");
   File dir = SD.open("/");
   
   while (true) {
