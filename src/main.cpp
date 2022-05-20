@@ -41,6 +41,7 @@ int holdTime = 1000;
 // And those used for inputs
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
+#define LIGHT_PIN 20
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
@@ -141,6 +142,7 @@ void stopRecording() {
   }
   // Close the file
   frec.close();
+  digitalWrite(LIGHT_PIN, LOW);
   mode = Mode::Ready;
 }
 
@@ -224,6 +226,8 @@ void setup() {
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
   pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(LIGHT_PIN, OUTPUT);
+  digitalWrite(LIGHT_PIN, LOW);
 
   // Audio connections require memory, and the record queue
   // uses this memory to buffer incoming audio.
@@ -319,6 +323,7 @@ void loop() {
       break;
 
     case Mode::Recording:
+      digitalWrite(LIGHT_PIN, HIGH);
       // Handset is replaced
       if(buttonRecord.fallingEdge()){
         // Debug log
