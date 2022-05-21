@@ -41,7 +41,7 @@ int holdTime = 1000;
 // And those used for inputs
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
-#define LIGHT_PIN 20
+#define LIGHT_PIN 22
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
